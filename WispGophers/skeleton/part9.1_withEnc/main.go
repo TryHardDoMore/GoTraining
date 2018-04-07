@@ -14,6 +14,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -30,10 +32,14 @@ var (
 	self     string
 )
 
+var aeskey = []byte("AbsolutlyRandomKeyForAesEncryption")[:32]
+var iv = []byte("532b6195636c6127")[:aes.BlockSize]
+
 type Message struct {
 	ID   string
 	Addr string
-	Body string
+	Body []byte
+	Size int
 }
 
 func main() {
@@ -117,10 +123,15 @@ func serve(c net.Conn) {
 			return
 		}
 		// TODO: If this message has seen before, ignore it.
-		if Seen(m.ID){
+		if Seen(m.ID) {
 			continue
 		}
-		fmt.Printf("%#v\n", m)
+		decripted := make([]byte, m.Size)
+		err = decryptAES(decripted, []byte(m.Body), aeskey, iv)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s\n", string(decripted))
 		broadcast(m)
 		go dial(m.Addr)
 	}
@@ -129,11 +140,18 @@ func serve(c net.Conn) {
 func readInput() {
 	s := bufio.NewScanner(os.Stdin)
 	for s.Scan() {
+		text := []byte(s.Text())
+		encrypted := make([]byte, len(text))
+		err := encryptAES(encrypted, text, aeskey, iv)
+		if err != nil {
+			panic(err)
+		}
 		m := Message{
 			// TODO: use util.RandomID to populate the ID field.
-			ID : util.RandomID(),
+			ID:   util.RandomID(),
 			Addr: self,
-			Body: s.Text(),
+			Body: encrypted,
+			Size: len(text),
 		}
 		// TODO: Mark the message ID as seen.
 		Seen(m.ID)
@@ -174,9 +192,10 @@ func dial(addr string) {
 
 // TODO: Create a new map of seen message IDs and a mutex to protect it.
 var seenIDs = struct {
-         m map[string]bool
-         lock sync.Mutex
+	m    map[string]bool
+	lock sync.Mutex
 }{m: make(map[string]bool)}
+
 // Seen returns true if the specified id has been seen before.
 // If not, it returns false and marks the given id as "seen".
 func Seen(id string) bool {
@@ -188,4 +207,24 @@ func Seen(id string) bool {
 	seenIDs.m[id] = true
 	seenIDs.lock.Unlock()
 	return ok
+}
+
+func encryptAES(dst, src, key, iv []byte) error {
+	aesBlockEncryptor, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return err
+	}
+	aesEncrypter := cipher.NewCFBEncrypter(aesBlockEncryptor, iv)
+	aesEncrypter.XORKeyStream(dst, src)
+	return nil
+}
+
+func decryptAES(dst, src, key, iv []byte) error {
+	aesBlockEncryptor, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return err
+	}
+	aesEncrypter := cipher.NewCFBEncrypter(aesBlockEncryptor, iv)
+	aesEncrypter.XORKeyStream(dst, src)
+	return nil
 }
