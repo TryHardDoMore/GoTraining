@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"strings"
 
 	"github.com/campoy/whispering-gophers/util"
 )
@@ -131,9 +132,13 @@ func serve(c net.Conn) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("%s\n", string(decripted))
-		broadcast(m)
-		go dial(m.Addr)
+		if checkSpam(string(decripted)){
+			fmt.Print("SPAM!!!")
+		} else {
+			fmt.Printf("%s\n", string(decripted))
+			broadcast(m)
+			go dial(m.Addr)
+		}	
 	}
 }
 
@@ -228,3 +233,40 @@ func decryptAES(dst, src, key, iv []byte) error {
 	aesEncrypter.XORKeyStream(dst, src)
 	return nil
 }
+
+func checkSpam(message string) bool{
+	fields := strings.Fields(message)
+	if len(fields) <1 {
+		log.Println("Empty Message")
+		return true
+	} else if len(fields) == 1 {
+		for _, num := range(getUniqSub(message)){
+			if num > 2 {
+				return true
+			}
+		}
+	} else {
+		for _, word := range(strings.Fields(message)){
+			if strings.Count(message, word) > 3 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+
+func getUniqSub(message string) map[string]int {
+	substr := make(map[string]int)
+	for f:=0; f<len(message); f=f+2{
+		sub := message[0:f]
+		_, ok := substr[sub]
+		if !ok{
+			substr[sub] = 1
+		}else{
+			substr[sub]++
+		}
+	}
+	return substr
+}
+
