@@ -22,8 +22,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"sync"
 	"strings"
+	"sync"
 
 	"github.com/campoy/whispering-gophers/util"
 )
@@ -132,13 +132,13 @@ func serve(c net.Conn) {
 		if err != nil {
 			panic(err)
 		}
-		if checkSpam(string(decripted)){
+		if checkSpam(string(decripted)) {
 			fmt.Print("SPAM!!!")
 		} else {
 			fmt.Printf("%s\n", string(decripted))
 			broadcast(m)
 			go dial(m.Addr)
-		}	
+		}
 	}
 }
 
@@ -234,19 +234,19 @@ func decryptAES(dst, src, key, iv []byte) error {
 	return nil
 }
 
-func checkSpam(message string) bool{
+func checkSpam(message string) bool {
 	fields := strings.Fields(message)
-	if len(fields) <1 {
+	if len(fields) < 1 {
 		log.Println("Empty Message")
 		return true
 	} else if len(fields) == 1 {
-		for _, num := range(getUniqSub(message)){
+		for _, num := range getUniqSub(message) {
 			if num > 2 {
 				return true
 			}
 		}
 	} else {
-		for _, word := range(strings.Fields(message)){
+		for _, word := range strings.Fields(message) {
 			if strings.Count(message, word) > 3 {
 				return true
 			}
@@ -255,18 +255,16 @@ func checkSpam(message string) bool{
 	return false
 }
 
-
 func getUniqSub(message string) map[string]int {
 	substr := make(map[string]int)
-	for f:=0; f<len(message); f=f+2{
+	for f := 0; f < len(message); f = f + 2 {
 		sub := message[0:f]
 		_, ok := substr[sub]
-		if !ok{
+		if !ok {
 			substr[sub] = 1
-		}else{
+		} else {
 			substr[sub]++
 		}
 	}
 	return substr
 }
-
