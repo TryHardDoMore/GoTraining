@@ -133,7 +133,7 @@ func serve(c net.Conn) {
 			panic(err)
 		}
 		if checkSpam(string(decripted)) {
-			fmt.Print("SPAM!!!")
+			fmt.Println("SPAM!!!")
 		} else {
 			fmt.Printf("%s\n", string(decripted))
 			broadcast(m)
@@ -240,14 +240,14 @@ func checkSpam(message string) bool {
 		log.Println("Empty Message")
 		return true
 	} else if len(fields) == 1 {
-		for _, num := range getUniqSub(message) {
-			if num > 2 {
+		for sub := range getUniqSub(message) {
+			if strings.Count(message, sub) > 2 {
 				return true
 			}
 		}
 	} else {
 		for _, word := range strings.Fields(message) {
-			if strings.Count(message, word) > 3 {
+			if strings.Count(message, word) > 2 {
 				return true
 			}
 		}
@@ -255,15 +255,15 @@ func checkSpam(message string) bool {
 	return false
 }
 
-func getUniqSub(message string) map[string]int {
-	substr := make(map[string]int)
-	for f := 0; f < len(message); f = f + 2 {
-		sub := message[0:f]
-		_, ok := substr[sub]
-		if !ok {
-			substr[sub] = 1
-		} else {
-			substr[sub]++
+func getUniqSub(message string) map[string]bool {
+	substr := make(map[string]bool)
+	for f := 0; f < len(message); f++ {
+		for u := len(message); u > f; u-- {
+			sub := message[f:u]
+			_, ok := substr[sub]
+			if !ok {
+				substr[sub] = true
+			}
 		}
 	}
 	return substr
